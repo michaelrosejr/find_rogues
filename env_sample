@@ -1,0 +1,13 @@
+---
+  default:
+    client_id: "central_client_id"
+    client_secret: "central_secret"
+    customer_id: "central_customer_id"
+    base_url: "central_base_url"
+    from_email: "who_is_this_from@company.com"
+    to_emails: ["email@email_person_2.com", "user@email_person_1.com"]
+    subject: "Wireless Rogues Alert"
+    check_ssids: ["company_ssid", "employee_ssid"]
+    sendgrid_api_key: ""
+    username: "central_username_password_not_SSO"
+    password: "central_password_to_not_SSO_account_above"
