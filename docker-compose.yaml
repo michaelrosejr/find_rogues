@@ -1,0 +1,12 @@
+name: aruba_find_rogues
+services:
+  find_rogues:
+    container_name: aruba_find_rogues
+    stdin_open: true
+    volumes:
+      - ./.env.yaml:/.env.yaml
+      - ./temp:/temp
+    tty: true
+    image: find_rogues
+    command: ["show"]
+    # command: ["python", "find_rogues/app.py", "show"]
