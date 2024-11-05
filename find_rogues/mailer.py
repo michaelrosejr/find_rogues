@@ -1,10 +1,6 @@
-import datetime
-import os
-
-# from sendgrid import SendGridAPIClient
 import sendgrid
 import yaml
-from jinja2 import Environment, FileSystemLoader, PackageLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 from sendgrid.helpers.mail import Mail
 
@@ -20,6 +16,7 @@ def sendmail(message_details, config, html_template_content):
     try:
         sg = sendgrid.SendGridAPIClient(message_details["sendgrid_api_key"])
         response = sg.send(message)
+        logger.info(f"sendgrid sendmail: {response}")
     except Exception as e:
         logger.error(e)
 

@@ -1,9 +1,15 @@
+import sys
 import os
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from tabulate import tabulate
+from loguru import logger
+
 import tempfile
 import yaml
+
+logger.remove()
+logger.add(sys.stderr, level="ERROR")
 
 with open(".env.yaml", "r") as envf:
     central_info = yaml.safe_load(envf)
@@ -105,9 +111,9 @@ def main():
             filename="rogue_data.txt",
             initial_comment="Rogue SSIDs:",
         )
-        print("Table uploaded successfully!")
+        logger.info(f"Table uploaded successfully! {response}")
     except SlackApiError as e:
-        print(f"Error uploading table: {e}")
+        logger.error(f"Error uploading table: {e}")
 
 
 if __name__ == "__main__":

@@ -3,12 +3,11 @@ import sys
 from typing import Dict, Optional
 
 import pendulum as pdl
-import pycentral
 import typer
 import yaml
 import apprise
 
-from fuzzywuzzy import fuzz, process
+from fuzzywuzzy import fuzz
 from pathlib import Path
 from loguru import logger
 from mailer import send_template_email
@@ -20,6 +19,8 @@ from tabulate import tabulate
 from slack_table import SlackTableUploader, SlackApiError
 from savedata import save_to_file
 from smtplegacy import send_legacy_email
+
+from models.rogues import RogueModel
 
 with open(".env.yaml", "r") as envf:
     central_info = yaml.safe_load(envf)
@@ -52,7 +53,7 @@ def get_groups(central):
         resp = central.command(
             apiMethod=apiMethod, apiPath=apiPath, apiParams=apiParams
         )
-
+        status.update("[bold green]Done!")
     return resp
 
 
@@ -72,6 +73,8 @@ def get_rogues(central) -> Optional[Dict]:
         resp = central.command(
             apiMethod=apiMethod, apiPath=apiPath, apiParams=apiParams
         )
+        status.update("[bold green]Done!")
+        logger.info(f"Rogue APs: {resp}")
     return resp
 
 
@@ -215,14 +218,45 @@ def get_all_rogues(account):
     for ea in all_types:
         if "first_seen" in ea:
             ea["human_first_seen"] = pdl.parse(ea["first_seen"]).to_cookie_string()  # type: ignore
-
+        if "last_seen" in ea:
+            ea["human_last_seen"] = pdl.parse(ea["last_seen"]).to_cookie_string()  # type: ignore
     return all_types
 
 
+def clean_rogue_data(_rogue_data: dict, ignore_keys: list = []):
+    all_rogues = RogueModel(_rogue_data)
+    rogues = all_rogues.dict()
+
+    for k in ignore_keys:
+        for ea in rogues:
+            if k in ea:
+                del ea[k]
+
+    for item in rogues:
+        if "classification" in item:
+            item["Type"] = item.pop("classification")
+        if "name" in item:
+            item["Manufacture"] = item.pop("name")
+        if "ssid" in item:
+            item["Rogue SSID"] = item.pop("ssid")
+        if "human_last_seen" in item:
+            item["Last Seen"] = item.pop("human_last_seen")
+        if "id" in item:
+            item["BSSID"] = item.pop("id")
+        if "last_det_device_name" in item:
+            item["Seen By"] = item.pop("last_det_device_name")
+        if "signal" in item:
+            item["Signal"] = item.pop("signal")
+
+    return rogues
+
+
 @app.command()
-def email(account: str = typer.Argument("default", help="Email Report of Rogue APs")):
+def sendgrid(
+    account: str = typer.Argument("default", help="Email Report using SendGrid"),
+):
     """
-    Email Report of Rogue APs
+    Email Report of Rogue APs using SendGrid
     """
     check_ssids = central_info[account]["check_ssids"]
     all_rapids_types = get_all_rogues(account)
@@ -249,8 +283,7 @@ def slack(
     Send table of Rogue APs to Slack
     """
 
-    slack_url = central_info[account]["slack_url"]
-    # check_ssids = central_info[account]['check_ssids']
+    # slack_url = central_info[account]["slack_url"]
     all_rapids_types = get_all_rogues(account)
 
     ignore_keys = [
@@ -264,29 +297,16 @@ def slack(
         "first_seen",
         "first_det_device",
         "last_det_device",
-        "last_det_device_name",
+        "last_seen",
         "human_first_seen",
         "overriden",
     ]
-    for k in ignore_keys:
-        for ea in all_rapids_types:
-            if "last_seen" in ea:
-                ea["human_last_seen"] = pdl.parse(ea["last_seen"]).to_cookie_string()
-                del ea["last_seen"]
-            if k in ea:
-                del ea[k]
 
-    # header = all_rapids_types[0].keys()
-    header = ["Type", "BSSID", "Vendor Name", "Signal", "Seen by", "Last Seen"]
-
-    rows = [x.values() for x in all_rapids_types]
-    table = tabulate(rows, header)
+    rogues = clean_rogue_data(all_rapids_types, ignore_keys)
+    table = tabulate(rogues, headers="keys")
 
     print("[bold green]Sending message to Slack...")
     uploader = SlackTableUploader(central_info[account]["slack_bot_token"])
-
-    # Create ASCII table
-    # table = uploader.create_ascii_table(data, headers)
 
     # Upload to Slack
     try:
@@ -297,16 +317,54 @@ def slack(
             initial_comment="Rogue SSIDs:",
         )
         print("Table uploaded successfully!")
+        return response
     except SlackApiError as e:
         print(f"Error uploading table: {e}")
 
 
 @app.command()
 def smtp(
+    account: str = typer.Argument("default", help="Email Report using SMTP"),
+    rev: bool = typer.Option(1, help="Reverse sort order"),
+    test: bool = typer.Option(False, help="Send test email"),
+):
+    """
+    Email Report of Rogue APs usign SMTP
+    """
+    all_rapids_types = get_all_rogues(account)
+    ignore_keys = [
+        "acknowledged",
+        "classification_method",
+        "encryption",
+        "mac_vendor",
+        "first_det_device_name",
+        "containment_status",
+        "cust_id",
+        "first_seen",
+        "first_det_device",
+        "last_det_device",
+        # "last_det_device_name",
+        "human_first_seen",
+        "overriden",
+    ]
+
+    rogues = clean_rogue_data(all_rapids_types, ignore_keys)
+    table = tabulate(rogues, headers="keys", tablefmt="html")
+    send_legacy_email(table, account)
+
+
+@app.command()
+def datatest(
     account: str = typer.Argument("default", help="Show table of Rogue APs"),
     rev: bool = typer.Option(1, help="Reverse sort order"),
 ):
-    all_rapids_types = get_all_rogues(account)
+    # all_rapids_types = get_all_rogues(account)
+    import json
+
+    # with open("rogue_test_data.json", "w") as f:
+    #     json.dump(all_rapids_types, f)
+    with open("rogue_test_data.json", "r") as f:
+        all_rapids_types = json.load(f)
 
     ignore_keys = [
         "acknowledged",
@@ -319,26 +377,15 @@ def smtp(
         "first_seen",
         "first_det_device",
         "last_det_device",
-        "last_det_device_name",
+        "last_seen",
         "human_first_seen",
         "overriden",
     ]
-    for k in ignore_keys:
-        for ea in all_rapids_types:
-            if "last_seen" in ea:
-                ea["human_last_seen"] = pdl.parse(ea["last_seen"]).to_cookie_string()
-                del ea["last_seen"]
-            if k in ea:
-                del ea[k]
 
-    # header = all_rapids_types[0].keys()
-    header = ["Type", "BSSID", "Vendor Name", "Signal", "Seen by", "Last Seen"]
+    rogues = clean_rogue_data(all_rapids_types, ignore_keys)
 
-    rows = [x.values() for x in all_rapids_types]
-    table = tabulate(rows, header)
-
-    print("[bold green]Sending message via SMTP...")
-    send_legacy_email(table, account=account)
+    table = tabulate(rogues, headers="keys")
+    print(table)
 
 
 @app.command()
@@ -392,6 +439,8 @@ def main(name: str):
     for ea in all_rapids_types:
         if "first_seen" in ea:
             ea["human_first_seen"] = pdl.parse(ea["first_seen"]).to_cookie_string()  # type: ignore
+        if "last_seen" in ea:
+            ea["human_last_seen"] = pdl.parse(ea["last_seen"]).to_cookie_string()  # type: ignore
 
     all_types = show_all_rogues(all_rapids_types, mail=True)
     account = "default"

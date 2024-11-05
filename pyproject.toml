@@ -20,6 +20,7 @@ apprise = "^1.9.0"
 tabulate = "^0.9.0"
 slack-sdk = "^3.33.2"
 ruff = "^0.7.1"
+datamodel-code-generator = "^0.26.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
