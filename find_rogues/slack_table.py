@@ -11,7 +11,7 @@ import yaml
 logger.remove()
 logger.add(sys.stderr, level="ERROR")
 
-with open(".env.yaml", "r") as envf:
+with open(".env.yaml", "rb") as envf:
     central_info = yaml.safe_load(envf)
 
 

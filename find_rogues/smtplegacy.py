@@ -6,7 +6,7 @@ from email.mime.multipart import MIMEMultipart
 
 from email.mime.text import MIMEText
 
-with open(".env.yaml", "r") as envf:
+with open(".env.yaml", "rb") as envf:
     central_info = yaml.safe_load(envf)
 
 

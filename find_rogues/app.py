@@ -22,7 +22,7 @@ from smtplegacy import send_legacy_email
 
 from models.rogues import RogueModel
 
-with open(".env.yaml", "r") as envf:
+with open(".env.yaml", "rb") as envf:
     central_info = yaml.safe_load(envf)
 
 logger.remove()
