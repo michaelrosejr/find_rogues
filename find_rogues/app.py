@@ -287,6 +287,7 @@ def slack(
     all_rapids_types = get_all_rogues(account)
 
     ignore_keys = [
+        "last_seen",
         "acknowledged",
         "classification_method",
         "encryption",
@@ -333,6 +334,7 @@ def smtp(
     """
     all_rapids_types = get_all_rogues(account)
     ignore_keys = [
+        "last_seen",
         "acknowledged",
         "classification_method",
         "encryption",

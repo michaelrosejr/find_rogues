@@ -13,17 +13,17 @@ with open(".env.yaml", "rb") as envf:
 def send_legacy_email(table, account="default", html=True):
     # Create EmailMessage object
     if html:
-        message = MIMEMultipart('alternative')
+        message = MIMEMultipart("alternative")
         # message.set_content(table, subtype="html")
-        part1 = MIMEText(table, 'html')
+        part1 = MIMEText(table, "html")
         message.attach(part1)
     else:
         message = EmailMessage()
         message.set_content(table)
 
-    message["Subject"] = (central_info[account]["subject"])
-    message["From"] = (central_info[account]["from_email"])
-    message["To"] = (central_info[account]["to_emails"][0])
+    message["Subject"] = central_info[account]["subject"]
+    message["From"] = central_info[account]["from_email"]
+    message["To"] = central_info[account]["to_emails"][0]
 
     # Create SMTP Session and send message
     # session = smtplib.SMTP_SSL(
@@ -36,7 +36,9 @@ def send_legacy_email(table, account="default", html=True):
     #     central_info[account]["smtp"]["password"],
     # )
     # session.send_message(message)
-    with smtplib.SMTP(central_info[account]["smtp"]["host"], central_info[account]["smtp"]["port"]) as session:
+    with smtplib.SMTP(
+        central_info[account]["smtp"]["host"], central_info[account]["smtp"]["port"]
+    ) as session:
         session.starttls()
         session.login(
             central_info[account]["smtp"]["username"],
