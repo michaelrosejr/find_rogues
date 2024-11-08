@@ -1,6 +1,6 @@
 import smtplib
 import yaml
-from rich import print
+# from rich import print
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 
@@ -39,9 +39,9 @@ def send_legacy_email(table, account="default", html=True):
     with smtplib.SMTP(
         central_info[account]["smtp"]["host"], central_info[account]["smtp"]["port"]
     ) as session:
-        session.starttls()
-        session.login(
-            central_info[account]["smtp"]["username"],
-            central_info[account]["smtp"]["password"],
-        )
+        # session.starttls()
+        # session.login(
+        #     central_info[account]["smtp"]["username"],
+        #     central_info[account]["smtp"]["password"],
+        # )
         session.send_message(message)
